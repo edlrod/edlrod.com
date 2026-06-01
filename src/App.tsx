@@ -1,5 +1,5 @@
+import { Canvas } from "./components/Canvas";
 import { Link } from "./components/Link";
-import { Canvas } from "./components/ui/Canvas";
 
 const fadeInClasses = "opacity-0 animate-[fade-in-up_0.5s_ease-out_forwards]";
 

@@ -5,10 +5,17 @@ interface Position {
 	y: number;
 }
 
+interface FadingPosition extends Position {
+	releasedAt: number;
+}
+
 export const Canvas = () => {
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 	const frameRef = useRef<number | null>(null);
-	const mouseRef = useRef<Position[]>([]);
+	const activeRef = useRef<Position[]>([]);
+	const fadingRef = useRef<FadingPosition[]>([]);
+
+	const FADE_DURATION = 600;
 
 	useEffect(() => {
 		const pointers = new Map<number, { x: number; y: number }>();
@@ -19,12 +26,19 @@ export const Canvas = () => {
 				y: e.clientY,
 			});
 
-			mouseRef.current = [...pointers.values()];
+			activeRef.current = [...pointers.values()];
 		};
 
 		const remove = (e: PointerEvent) => {
+			const pos = pointers.get(e.pointerId);
+			if (pos) {
+				fadingRef.current = [
+					...fadingRef.current,
+					{ ...pos, releasedAt: performance.now() },
+				];
+			}
 			pointers.delete(e.pointerId);
-			mouseRef.current = [...pointers.values()];
+			activeRef.current = [...pointers.values()];
 		};
 
 		window.addEventListener("pointerdown", update);
@@ -72,23 +86,39 @@ export const Canvas = () => {
 
 				const surfaceY = waterTop + baseWave;
 
-				const mouseEffect = mouseRef.current.reduce((total, mouse) => {
+				const computeRipple = (
+					mouse: Position,
+					amplitude: number,
+				) => {
 					const dx = mouse.x - x;
 					const dy = Math.abs(surfaceY - mouse.y);
-
 					const horizontalFalloff = Math.exp(-(dx * dx) / 8000);
 					const verticalFalloff = Math.exp(-dy / 100);
-
-					const ripple =
+					return (
 						Math.sin(dx * 0.08 - t * 8) *
-						20 *
+						amplitude *
 						horizontalFalloff *
-						verticalFalloff;
+						verticalFalloff
+					);
+				};
 
-					return total + ripple;
+				const mouseEffect = activeRef.current.reduce(
+					(total, mouse) => total + computeRipple(mouse, 20),
+					0,
+				);
+
+				const cutOff = time - FADE_DURATION;
+				fadingRef.current = fadingRef.current.filter(
+					(f) => f.releasedAt > cutOff,
+				);
+
+				const fadeEffect = fadingRef.current.reduce((total, fading) => {
+					const elapsed = time - fading.releasedAt;
+					const decay = 1 - elapsed / FADE_DURATION;
+					return total + computeRipple(fading, 20 * decay);
 				}, 0);
 
-				return surfaceY + mouseEffect;
+				return surfaceY + mouseEffect + fadeEffect;
 			};
 
 			ctx.strokeStyle = "#fff";

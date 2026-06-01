@@ -86,10 +86,7 @@ export const Canvas = () => {
 
 				const surfaceY = waterTop + baseWave;
 
-				const computeRipple = (
-					mouse: Position,
-					amplitude: number,
-				) => {
+				const computeRipple = (mouse: Position, amplitude: number) => {
 					const dx = mouse.x - x;
 					const dy = Math.abs(surfaceY - mouse.y);
 					const horizontalFalloff = Math.exp(-(dx * dx) / 8000);
